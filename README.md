@@ -1,87 +1,78 @@
-# 🌐 HTTP Analyzer
+# 🔭 Port Scanner
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.8%2B-blue?style=flat-square&logo=python" />
-  <img src="https://img.shields.io/badge/Tool-HTTP%20Analysis-orange?style=flat-square" />
-  <img src="https://img.shields.io/badge/Category-Web%20Recon-red?style=flat-square" />
+  <img src="https://img.shields.io/badge/Tool-Port%20Scanning-purple?style=flat-square" />
+  <img src="https://img.shields.io/badge/Category-Network%20Recon-red?style=flat-square" />
 </p>
 
-> Analyze HTTP response headers, detect missing security headers, identify server info disclosure, and export results to JSON — all from the command line.
+> A fast, concurrent TCP port scanner built with Python's `ThreadPoolExecutor`. Supports custom port ranges, configurable threads, and is designed for CTF and authorized pentesting workflows.
 
 ---
 
 ## 📌 What It Does
 
-`http_analyzer.py` sends HTTP/HTTPS requests to a target and inspects the response for:
+`portscanner.py` performs TCP connect scans against a target host:
 
-- ✅ **Security headers** — checks for presence of 7 critical headers
-- ⚠️ **Missing security headers** — flags what's absent
-- 🕵️ **Server info disclosure** — detects headers leaking tech stack (e.g., `X-Powered-By`, `Server`)
-- 🔒 **SSL/TLS behavior** — handles cert errors gracefully with fallback logic
-- 📄 **JSON export** — save results for reporting or pipeline use
-
----
-
-## 🛡️ Security Headers Checked
-
-| Header | Purpose |
-|--------|---------|
-| `Strict-Transport-Security` | Enforces HTTPS |
-| `Content-Security-Policy` | Prevents XSS/injection |
-| `X-Content-Type-Options` | Stops MIME sniffing |
-| `X-Frame-Options` | Clickjacking protection |
-| `X-XSS-Protection` | Legacy XSS filter |
-| `Referrer-Policy` | Controls referrer info leakage |
-| `Permissions-Policy` | Restricts browser feature access |
+- ⚡ **Concurrent scanning** — uses threading for high-speed results
+- 🎯 **Flexible port input** — comma-separated lists, ranges, or mixed
+- 🏁 **Open port summary** — clean summary after each scan
+- ⏱️ **Configurable timeout** — tune for speed vs. accuracy
 
 ---
 
 ## 📦 Installation
 
-```bash
-pip install requests
-```
+No external dependencies. Uses Python standard library only.
 
-No other external dependencies required.
+```bash
+python3 --version  # Requires Python 3.8+
+```
 
 ---
 
 ## 🚀 Usage
 
 ```bash
-python3 http_analyzer.py <target> [options]
+python3 portscanner.py <host> [options]
 ```
 
 ### Arguments
 
 | Argument | Description | Default |
 |----------|-------------|---------|
-| `target` | URL or hostname (e.g. `example.com` or `https://example.com`) | Required |
-| `--method` | HTTP method: `GET` or `HEAD` | `GET` |
-| `--timeout` | Request timeout in seconds | `10` |
-| `--insecure` | Disable SSL certificate verification | `False` |
-| `--json FILE` | Export results to JSON file | None |
-| `--headers` | Show all raw response headers | `False` |
+| `host` | Target hostname or IP address | Required |
+| `-p, --ports` | Ports to scan. Supports `80,443,8000-8003` format | Common ports |
+| `-t, --timeout` | Connection timeout in seconds | `3` |
+| `--threads` | Number of concurrent threads | `10` |
+
+### Default Port Set
+
+When no `-p` flag is given, scans these common ports:
+
+```
+20-25, 53, 80, 110, 143, 443, 445, 3306, 3389, 5432, 5900, 8080, 8443
+```
 
 ---
 
 ## 💡 Examples
 
 ```bash
-# Basic scan
-python3 http_analyzer.py example.com
+# Scan default common ports
+python3 portscanner.py 192.168.1.1
 
-# Use HEAD method, export to JSON
-python3 http_analyzer.py https://target.com --method HEAD --json results.json
+# Scan specific ports
+python3 portscanner.py example.com -p 22,80,443,8080,8443
 
-# Skip SSL verification (for self-signed certs)
-python3 http_analyzer.py https://internal.target.com --insecure
+# Scan a full range
+python3 portscanner.py 10.10.10.5 -p 1-1024
 
-# Full headers dump
-python3 http_analyzer.py https://target.com --headers
+# Fast scan with more threads, shorter timeout
+python3 portscanner.py 10.10.10.5 -p 1-65535 --threads 100 -t 1
 
-# Custom timeout for slow targets
-python3 http_analyzer.py https://target.com --timeout 30
+# Mixed range syntax
+python3 portscanner.py target.htb -p 21,22,80,443,3000-3010,8080-8090
 ```
 
 ---
@@ -89,65 +80,59 @@ python3 http_analyzer.py https://target.com --timeout 30
 ## 📋 Sample Output
 
 ```
-======================================================================
-HTTP Analysis Results
-======================================================================
-
-Target: https://example.com
-Method: GET
-Status Code: 200
-
---- Security Headers ---
-  ✓ Strict-Transport-Security
-    max-age=31536000; includeSubDomains
-  ✓ X-Content-Type-Options
-    nosniff
-
---- Missing Security Headers ---
-  ✗ Content-Security-Policy
-  ✗ Referrer-Policy
-  ✗ Permissions-Policy
-
---- Server Information ---
-  Server: nginx/1.18.0
-  X-Powered-By: PHP/8.0.3
-
---- Analysis ---
-  ✓ Status 200: Success
-  ✓ Using HTTPS
-  ⚠ Information disclosure: Server
-  ⚠ Information disclosure: X-Powered-By
-  Cache-Control: no-cache, no-store
-
-======================================================================
+Scanning 14 ports on 192.168.1.100...
+--------------------------------------------------
+Port    22: OPEN
+Port    80: OPEN
+Port   110: CLOSED
+Port   143: CLOSED
+Port   443: OPEN
+Port  3306: CLOSED
+Port  3389: CLOSED
+Port  8080: OPEN
+--------------------------------------------------
+Scan complete. Open ports: 4
+Open ports: 22, 80, 443, 8080
+Scan took 3.14 seconds
 ```
 
 ---
 
 ## 🧩 Use in CTF / Bug Bounty
 
-- **Bug bounty**: Missing `CSP` or `HSTS` headers can be low/info findings on some programs
-- **XSS chains**: Lack of `Content-Security-Policy` opens door for stored/reflected XSS
-- **Info disclosure**: `X-Powered-By: PHP/5.6.0` → hunt for known CVEs on that version
-- **CTF recon**: Custom response headers often hide flags or version hints
+| Scenario | Command |
+|----------|---------|
+| HTB/THM initial recon | `python3 portscanner.py 10.10.10.X -p 1-10000 --threads 50 -t 1` |
+| Web-only bug bounty | `python3 portscanner.py target.com -p 80,443,8000-8999` |
+| Check for exposed DBs | `python3 portscanner.py target.com -p 3306,5432,27017,6379` |
+| Remote access services | `python3 portscanner.py target.com -p 22,23,3389,5900` |
+
+### Pro Tips 🎯
+
+- Combine with `recon.sh` — run port scan first, then feed open ports to nmap for `-sV` service detection
+- On CTF machines: scan `1-65535` with `--threads 100 -t 1` for speed
+- For bug bounty: stay within scope — don't scan ports on assets not listed in scope
 
 ---
 
-## 📤 JSON Export Format
+## ⚙️ How It Works
 
-```json
-{
-  "url": "https://example.com",
-  "method": "GET",
-  "timestamp": "2026-04-09T12:00:00",
-  "status_code": 200,
-  "headers": { ... },
-  "security_headers": { "Strict-Transport-Security": "max-age=31536000" },
-  "missing_security_headers": ["Content-Security-Policy", "Referrer-Policy"],
-  "server_info": { "Server": "nginx/1.18.0" },
-  "analysis": ["✓ Using HTTPS", "⚠ Information disclosure: Server"]
-}
 ```
+Target Host
+    │
+    ▼
+ThreadPoolExecutor (N threads)
+    │
+    ├─ Thread 1: TCP connect → port 80  → OPEN
+    ├─ Thread 2: TCP connect → port 22  → OPEN
+    ├─ Thread 3: TCP connect → port 443 → OPEN
+    └─ Thread N: TCP connect → port ... → CLOSED
+    │
+    ▼
+Aggregate results → Print summary
+```
+
+Uses `socket.connect_ex()` — returns `0` for open, non-zero for closed/filtered.
 
 ---
 
